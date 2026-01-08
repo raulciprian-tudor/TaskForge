@@ -64,12 +64,10 @@ def update_task():
     """Info: update task status"""
     task_title = get_non_empty("Task name: ")
 
-    # find task by title
     for task in tasks:
         if task["title"] == task_title:
             current = task["status"]
 
-            # show allowed next state
             if current == TODO:
                 next_allowed = IN_PROGRESS
             elif current == IN_PROGRESS:
@@ -90,6 +88,57 @@ def update_task():
     print("Task not found.")
 
 
+def delete_task():
+    """Info: remove task"""
+    task_id = get_non_empty("Enter task ID to delete: ")
+
+    try:
+        task_id = int(task_id)
+    except ValueError:
+        print("ID must be a number.")
+        return
+
+    # find task by title
+    for task in tasks:
+        if task["id"] == task_id:
+            tasks.remove(task)
+            print("Task deleted.")
+            return
+
+    print("Task not found.")
+
+
+def filter_tasks():
+    """Info: filter task by status"""
+    task_status = input("Enter task STATUS to filter: ").strip()
+    found = False
+
+    if (
+        task_status not in TODO
+        and task_status not in IN_PROGRESS
+        and task_status not in DONE
+    ):
+        print(f"Invalid status. Must be one of: {TODO, IN_PROGRESS, DONE}")
+        return
+
+    for task in tasks:
+        if task["status"] == task_status:
+            print(task)
+            found = True
+    if not found:
+        print("Task not found.")
+
+
+def show_all():
+    """Info: show all tasks"""
+    for task in tasks:
+        print("-----TASK-----")
+        print(f"ID : {task["id"]}")
+        print(f"TITLE: {task["title"]}")
+        print(f"STATUS: {task["status"]}")
+        print("-----------------")
+
+
 show_menu()
 while True:
     command = input("Command: ")
@@ -97,13 +146,13 @@ while True:
     if command == "add":
         create_task()
     elif command == "list":
-        print("show all tasks")
+        show_all()
     elif command == "update":
         update_task()
     elif command == "delete":
-        print("remove task")
+        delete_task()
     elif command == "filter":
-        print("show tasks by status")
+        filter_tasks()
     elif command == "help":
         show_menu()
     elif command == "exit":
