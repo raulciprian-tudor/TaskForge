@@ -1,8 +1,9 @@
 from datetime import datetime
 from datetime import date
+import json
 
-# Data
-tasks = []
+# JSON data
+TASK_FILE = "./json/tasks.json"
 
 # Task States
 TODO = "todo"
@@ -43,6 +44,27 @@ def show_menu():
         print("| " + line.ljust(width - 1) + "|")
 
     print("|" + "-" * width + "|")
+
+
+# Load data on program initialization
+def load_task():
+    """Info: load data on start"""
+    try:
+        with open(TASK_FILE, "r") as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        return []
+
+    # convert due date strings to date objects
+    for task in data:
+        if isinstance(task.get("due"), str):
+            task["due"] = datetime.strptime(task["due"], "%Y-%m-%d").date()
+
+    return data
+
+
+# load data
+tasks = load_task()
 
 
 # Validation logic
@@ -94,6 +116,19 @@ def priority_order():
 
 
 # Core Logic
+def save_tasks(tasks):
+    """Info: save data to json"""
+    serializable = []
+    for task in tasks:
+        new_task = task.copy()
+        if hasattr(new_task["due"], "isoformat"):
+            new_task["due"] = new_task["due"].isoformat()
+        serializable.append(new_task)
+
+    with open(TASK_FILE, "w") as f:
+        json.dump(serializable, f, indent=2)
+
+
 def create_task():
     """Info: function create task"""
     task_title = get_non_empty("Enter task name: ")
@@ -112,6 +147,7 @@ def create_task():
             "status": TODO,
         }
     )
+    save_tasks(tasks)
 
 
 def update_task():
@@ -139,6 +175,7 @@ def update_task():
 
         if update_request == next_allowed:
             target_task["status"] = next_allowed
+            save_tasks(tasks)
             print(f"Task updated to {next_allowed}")
         else:
             print(f"Invalid status. You can only move to {next_allowed}")
@@ -162,6 +199,7 @@ def delete_task():
 
     if target_task:
         tasks.remove(target_task)
+        save_tasks(tasks)
         print("Task deleted.")
     else:
         print("Task not found.")
