@@ -72,3 +72,10 @@ undo                  - Undo last action on a task
 help                  - Show command list
 exit                  - Exit the program
 ```
+---
+
+## 👤 Author
+
+Built by **Ciprian**
+
+This project is part of my learning journey in software engineering, focused on building complete systems and improving through iteration.
