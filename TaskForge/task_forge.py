@@ -11,6 +11,8 @@ TODO = "todo"
 IN_PROGRESS = "in progress"
 DONE = "done"
 
+ALLOWED_TRANSITIONS = {TODO: IN_PROGRESS, IN_PROGRESS: DONE}
+
 
 # Show commands function
 def show_menu():
@@ -48,44 +50,62 @@ def get_non_empty(prompt):
         print("Task title cannot be empty.")
 
 
+# Helpers
+def find_task_by_id(task_id):
+    """Info: helper to find task by id"""
+    for task in tasks:
+        if task["id"] == task_id:
+            return task
+    return None
+
+
+def next_id():
+    """Info: helper to generate incremental id"""
+    if not tasks:
+        return 1
+    return max(task["id"] for task in tasks) + 1
+
+
 # Core Logic
 def create_task():
     """Info: function create task"""
     task_title = get_non_empty("Task name: ")
 
-    while True:
-        secret_id = random.randrange(0, 99999999)
-        if secret_id not in [task["id"] for task in tasks]:
-            break
-    tasks.append({"id": secret_id, "title": task_title, "status": TODO})
+    new_id = next_id()
+    tasks.append({"id": new_id, "title": task_title, "status": TODO})
 
 
 def update_task():
     """Info: update task status"""
-    task_title = get_non_empty("Task name: ")
+    task_id = get_non_empty("Enter the task ID to update: ")
 
-    for task in tasks:
-        if task["title"] == task_title:
-            current = task["status"]
+    try:
+        task_id = int(task_id)
+    except ValueError:
+        print("ID must be a number.")
+        return
 
-            if current == TODO:
-                next_allowed = IN_PROGRESS
-            elif current == IN_PROGRESS:
-                next_allowed = DONE
-            else:
-                print("Task is already DONE and cannot be updated.")
-                return
+    # find task by ID
+    target_task = find_task_by_id(task_id)
+    if target_task:
+        current = target_task["status"]
 
-            update_request = input(f"Set status to ({next_allowed})? ").strip()
-
-            if update_request == next_allowed:
-                task["status"] = next_allowed
-                print(f"Task updated to {next_allowed}")
-            else:
-                print(f"Invalid status. You can only move to {next_allowed}")
+        if current not in ALLOWED_TRANSITIONS:
+            print("Task is already DONE and cannot be updated.")
             return
 
-    print("Task not found.")
+        next_allowed = ALLOWED_TRANSITIONS[current]
+
+        update_request = input(f"Set status to ({next_allowed})? ").strip()
+
+        if update_request == next_allowed:
+            target_task["status"] = next_allowed
+            print(f"Task updated to {next_allowed}")
+        else:
+            print(f"Invalid status. You can only move to {next_allowed}")
+        return
+    else:
+        print("Task not found.")
 
 
 def delete_task():
@@ -98,14 +118,14 @@ def delete_task():
         print("ID must be a number.")
         return
 
-    # find task by title
-    for task in tasks:
-        if task["id"] == task_id:
-            tasks.remove(task)
-            print("Task deleted.")
-            return
+    # find task by ID
+    target_task = find_task_by_id(task_id)
 
-    print("Task not found.")
+    if target_task:
+        tasks.remove(target_task)
+        print("Task deleted.")
+    else:
+        print("Task not found.")
 
 
 def filter_tasks():
@@ -113,11 +133,7 @@ def filter_tasks():
     task_status = input("Enter task STATUS to filter: ").strip()
     found = False
 
-    if (
-        task_status not in TODO
-        and task_status not in IN_PROGRESS
-        and task_status not in DONE
-    ):
+    if task_status not in [TODO, IN_PROGRESS, DONE]:
         print(f"Invalid status. Must be one of: {TODO, IN_PROGRESS, DONE}")
         return
 
@@ -133,9 +149,9 @@ def show_all():
     """Info: show all tasks"""
     for task in tasks:
         print("-----TASK-----")
-        print(f"ID : {task["id"]}")
-        print(f"TITLE: {task["title"]}")
-        print(f"STATUS: {task["status"]}")
+        print(f"ID : {task['id']}")
+        print(f"TITLE: {task['title']}")
+        print(f"STATUS: {task['status']}")
         print("-----------------")
 
 
