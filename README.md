@@ -76,6 +76,6 @@ exit                  - Exit the program
 
 ## 👤 Author
 
-Built by **Ciprian**
+Built by **Tudor Raul Ciprian**
 
 This project is part of my learning journey in software engineering, focused on building complete systems and improving through iteration.
