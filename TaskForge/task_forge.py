@@ -1,6 +1,7 @@
 from datetime import datetime
 from datetime import date
 import json
+from copy import deepcopy
 
 # JSON data
 TASK_FILE = "./json/tasks.json"
@@ -14,8 +15,13 @@ LOW = "low"
 MEDIUM = "medium"
 HIGH = "high"
 
+# FLOWS
 ALLOWED_TRANSITIONS = {TODO: IN_PROGRESS, IN_PROGRESS: DONE}
 PRIORITY_FLOW = {LOW: MEDIUM, MEDIUM: HIGH}
+
+# LOGGER
+logger = []
+history = {}
 
 
 # Show commands function
@@ -30,6 +36,8 @@ def show_menu():
         "- filter by status: show tasks by status",
         "- filter by priority: show tasks by priority",
         "- overdue: show tasks that are overdue",
+        "- view log: show logs",
+        "- undo: undo last action",
         "- help: show commands",
         "- exit: quit program",
     ]
@@ -65,6 +73,28 @@ def load_task():
 
 # load data
 tasks = load_task()
+
+
+# Logger
+def add_log(task, action):
+    """Info: log activity"""
+    global logger
+
+    logger.append(
+        {
+            "task": task,
+            "action": action,
+            "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        }
+    )
+
+
+def show_log():
+    """Info: show logs"""
+    global logger
+
+    for entry in logger:
+        print(entry)
 
 
 # Validation logic
@@ -115,6 +145,16 @@ def priority_order():
     return order
 
 
+def snapshot(task):
+    """Info: save action"""
+    task_id = task["id"]
+
+    if task_id not in history:
+        history[task_id] = []
+
+    history[task_id].append(deepcopy(task))
+
+
 # Core Logic
 def save_tasks(tasks):
     """Info: save data to json"""
@@ -148,6 +188,7 @@ def create_task():
         }
     )
     save_tasks(tasks)
+    add_log(task_title, "added task")
 
 
 def update_task():
@@ -167,6 +208,7 @@ def update_task():
 
         if current not in ALLOWED_TRANSITIONS:
             print("Task is already DONE and cannot be updated.")
+            add_log(target_task, "attempted update on task that was already DONE.")
             return
 
         next_allowed = ALLOWED_TRANSITIONS[current]
@@ -174,14 +216,16 @@ def update_task():
         update_request = input(f"Set status to ({next_allowed})? ").strip()
 
         if update_request == next_allowed:
+            snapshot(target_task)
+            add_log(target_task, "updated task status")
             target_task["status"] = next_allowed
             save_tasks(tasks)
             print(f"Task updated to {next_allowed}")
         else:
+            add_log(target_task, "invalid status")
             print(f"Invalid status. You can only move to {next_allowed}")
         return
-    else:
-        print("Task not found.")
+    print("Task not found.")
 
 
 def delete_task():
@@ -198,6 +242,8 @@ def delete_task():
     target_task = find_task_by_id(task_id)
 
     if target_task:
+        snapshot(target_task)
+        add_log(target_task, "removed task")
         tasks.remove(target_task)
         save_tasks(tasks)
         print("Task deleted.")
@@ -235,7 +281,7 @@ def filter_by_priority():
             print("No tasks.")
             return
 
-        for task in tasks:
+        for task in filtered:
             print(f"- {task['id']} | {task['title']} (due: {task['due']})")
 
 
@@ -255,15 +301,48 @@ def overdue_tasks():
 
 def show_all():
     """Info: show all tasks"""
-    for task in tasks:
-        print("-----TASK-----")
-        print(f"ID : {task['id']}")
-        print(f"TITLE: {task['title']}")
-        print(f"DESCRIPTION: {task['description']}")
-        print(f"DUE DATE: {task['due']}")
-        print(f"PRIORITY: {task['priority']}")
-        print(f"STATUS: {task['status']}")
-        print("-----------------")
+    if tasks:
+        for task in tasks:
+            print("-----TASK-----")
+            print(f"ID : {task['id']}")
+            print(f"TITLE: {task['title']}")
+            print(f"DESCRIPTION: {task['description']}")
+            print(f"DUE DATE: {task['due']}")
+            print(f"PRIORITY: {task['priority']}")
+            print(f"STATUS: {task['status']}")
+            print("-----------------")
+        return
+
+    print("No tasks found.")
+
+
+def undo_task():
+    """Info: undo action on task by id"""
+    task_id = get_non_empty("Enter the task ID to undo: ")
+
+    try:
+        task_id = int(task_id)
+    except ValueError:
+        print("ID must be a number")
+        return
+
+    if task_id not in history or len(history[task_id]) == 0:
+        print("No undo info for this task.")
+        return
+
+    last_state = history[task_id].pop()
+
+    task = find_task_by_id(task_id)
+
+    if task:
+        task.clear()
+        task.update(last_state)
+    else:
+        tasks.append(last_state)
+
+    add_log(last_state, "undo")
+    save_tasks(tasks)
+    print("Undo complete.")
 
 
 show_menu()
@@ -284,6 +363,14 @@ while True:
         filter_by_priority()
     elif command == "overdue":
         overdue_tasks()
+    elif command == "view log":
+        show_log()
+    elif command == "undo":
+        print(history)
+        if history:
+            undo_task()
+        else:
+            print("There are no actions to undo.")
     elif command == "help":
         show_menu()
     elif command == "exit":
